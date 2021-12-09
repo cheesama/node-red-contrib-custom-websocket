@@ -42,6 +42,9 @@ module.exports = function(RED) {
         node.closing = false;
         node.tls = n.tls;
 
+        //add headers
+        node.headers = n.headers;
+
         function startconn() {    // Connect to remote endpoint
             node.tout = null;
             var prox, noprox;
@@ -63,6 +66,7 @@ module.exports = function(RED) {
             }
 
             var options = {};
+            options.headers=node.headers;
 
             if (agent) {
                 options.agent = agent;
@@ -73,7 +77,9 @@ module.exports = function(RED) {
                     tlsNode.addTLSOptions(options);
                 }
             }
-            var socket = new ws(node.path,options);
+
+            //var socket = new ws(node.path, options);
+            var socket = new ws(node.path, [], options);
             socket.setMaxListeners(0);
             node.server = socket; // keep for closing
             handleConnection(socket);

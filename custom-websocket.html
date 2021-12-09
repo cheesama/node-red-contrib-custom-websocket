@@ -187,6 +187,7 @@
         category: 'config',
         defaults: {
             path: {value:"",required:true,validate:RED.validators.regex(/^((?!\/debug\/ws).)*$/)},
+            headers: {value:{}, required: false},
             tls: {type:"tls-config",required: false},
             wholemsg: {value:"false"}
         },
