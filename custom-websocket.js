@@ -10,10 +10,12 @@ module.exports = function(RED) {
 
     var serverUpgradeAdded = false;
     function handleServerUpgrade(request, socket, head) {
+        const parsed_path = url.parse(request.url);
         const pathname = url.parse(request.url).pathname;
         if (listenerNodes.hasOwnProperty(pathname)) {
             listenerNodes[pathname].server.handleUpgrade(request, socket, head, function done(ws) {
                 request.headers = head;
+                ws.params = parsed_path.query;
                 listenerNodes[pathname].server.emit('connection', ws, request);
             });
         } else {
@@ -43,8 +45,9 @@ module.exports = function(RED) {
         node.tls = n.tls;
 
         //add headers
-        node.headers = n.headers;
-
+        if(n.hasOwnProperty('headers'))
+            node.headers = JSON.parse(n.headers);
+        
         function startconn() {    // Connect to remote endpoint
             node.tout = null;
             var prox, noprox;
@@ -66,7 +69,8 @@ module.exports = function(RED) {
             }
 
             var options = {};
-            options.headers=node.headers;
+            if (node.hasOwnProperty('headers')) 
+                options.headers=node.headers;
 
             if (agent) {
                 options.agent = agent;
@@ -209,7 +213,7 @@ module.exports = function(RED) {
                 payload:data
             };
         }
-        msg._session = {type:"websocket", id:id};
+        msg._session = {type:"websocket", id:id, params:socket.params};
 
         for (var i = 0; i < this._inputNodes.length; i++) {
             this._inputNodes[i].send(msg);
@@ -254,18 +258,14 @@ module.exports = function(RED) {
         var node = this;
         this.serverConfig = RED.nodes.getNode(this.server);
 
-        //console.log(this.serverConfig);
-
         if (this.serverConfig) {
             this.serverConfig.registerInputNode(this);
             // TODO: nls
             this.serverConfig.on('opened', function(event) {
-                console.log('custom websocket in opened!');
-                console.log(event);
                 node.status({
                     fill:"green",shape:"dot",text:RED._("websocket.status.connected",{count:event.count}),
                     event:"connect",
-                    _session: {type:"websocket",id:event.id}
+                    _session: {type:"websocket", id:event.id, params:event.params}
                 });
             });
             this.serverConfig.on('erro', function(event) {
@@ -276,7 +276,6 @@ module.exports = function(RED) {
                 });
             });
             this.serverConfig.on('closed', function(event) {
-                console.log('custom websocket in closed!');
                 var status;
                 if (event.count > 0) {
                     status = {fill:"green",shape:"dot",text:RED._("websocket.status.connected",{count:event.count})};
